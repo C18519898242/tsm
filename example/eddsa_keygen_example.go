@@ -14,7 +14,7 @@ const (
 	eddsaTestPartyNum  = 3
 )
 
-func RunEdDSAKeygenExample() {
+func RunEdDSAKeygenExample(keyID string) {
 	fmt.Println("--- Starting EdDSA Key Generation Example ---")
 	partyIDs := tss.GenerateTestPartyIDs(eddsaTestPartyNum)
 	p2pCtx := tss.NewPeerContext(partyIDs)
@@ -115,10 +115,11 @@ func RunEdDSAKeygenExample() {
 
 	// Save the generated keys
 	for i, saveData := range saveDatas {
-		if err := SaveEdDSAKey(i, saveData); err != nil {
+		if err := SaveEdDSAKey(keyID, i, saveData); err != nil {
 			fmt.Printf("Error saving EdDSA key for party %d: %v\n", i, err)
 			os.Exit(1)
 		}
-		fmt.Printf("EdDSA key for party %d saved to %s/%s%d%s\n", i, keysDir, eddsaKeyFilePrefix, i, keyFileSuffix)
+		fileName := fmt.Sprintf("%s_%s%d%s", keyID, eddsaKeyFilePrefix, i, keyFileSuffix)
+		fmt.Printf("EdDSA key for party %d saved to %s/%s\n", i, keysDir, fileName)
 	}
 }
