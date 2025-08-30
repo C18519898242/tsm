@@ -3,7 +3,6 @@ package keystore
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -12,62 +11,85 @@ import (
 )
 
 const (
-	ecdsaKeyFilePrefix = "ecdsa_key_party_"
-	eddsaKeyFilePrefix = "eddsa_key_party_"
-	keyFileSuffix      = ".json"
-	keysDir            = "keys"
+	keyFolder = "./keys"
 )
 
-// SaveECDSAKey saves the ECDSA LocalPartySaveData for a given party index to a JSON file.
-func SaveECDSAKey(keyID string, partyIndex int, data *ecdsaKeygen.LocalPartySaveData) error {
-	if _, err := os.Stat(keysDir); os.IsNotExist(err) {
-		os.Mkdir(keysDir, 0755)
-	}
-	fileName := filepath.Join(keysDir, fmt.Sprintf("%s_%s%d%s", keyID, ecdsaKeyFilePrefix, partyIndex, keyFileSuffix))
-	file, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal ECDSA key data: %w", err)
-	}
-	return ioutil.WriteFile(fileName, file, 0644)
+func SaveECDSAKey(keyID string, partyIndex int, keyData *ecdsaKeygen.LocalPartySaveData) error {
+	fileName := fmt.Sprintf("%s_ecdsa_key_party_%d.json", keyID, partyIndex)
+	return saveKey(fileName, keyData)
 }
 
-// LoadECDSAKey loads the ECDSA LocalPartySaveData for a given party index from a JSON file.
-func LoadECDSAKey(keyID string, partyIndex int) (*ecdsaKeygen.LocalPartySaveData, error) {
-	fileName := filepath.Join(keysDir, fmt.Sprintf("%s_%s%d%s", keyID, ecdsaKeyFilePrefix, partyIndex, keyFileSuffix))
-	file, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read ECDSA key file: %w", err)
-	}
-	var data ecdsaKeygen.LocalPartySaveData
-	if err := json.Unmarshal(file, &data); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal ECDSA key data: %w", err)
-	}
-	return &data, nil
+func SaveEdDSAKey(keyID string, partyIndex int, keyData *eddsaKeygen.LocalPartySaveData) error {
+	fileName := fmt.Sprintf("%s_eddsa_key_party_%d.json", keyID, partyIndex)
+	return saveKey(fileName, keyData)
 }
 
-// SaveEdDSAKey saves the EdDSA LocalPartySaveData for a given party index to a JSON file.
-func SaveEdDSAKey(keyID string, partyIndex int, data *eddsaKeygen.LocalPartySaveData) error {
-	if _, err := os.Stat(keysDir); os.IsNotExist(err) {
-		os.Mkdir(keysDir, 0755)
+func LoadAllECDSAKeys(keyID string) ([]ecdsaKeygen.LocalPartySaveData, error) {
+	var keys []ecdsaKeygen.LocalPartySaveData
+	i := 0
+	for {
+		fileName := fmt.Sprintf("%s_ecdsa_key_party_%d.json", keyID, i)
+		filePath := filepath.Join(keyFolder, fileName)
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			break // No more files for this keyID
+		}
+
+		file, err := os.ReadFile(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read key file %s: %w", filePath, err)
+		}
+
+		var keyData ecdsaKeygen.LocalPartySaveData
+		if err := json.Unmarshal(file, &keyData); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal key data from %s: %w", filePath, err)
+		}
+		keys = append(keys, keyData)
+		i++
 	}
-	fileName := filepath.Join(keysDir, fmt.Sprintf("%s_%s%d%s", keyID, eddsaKeyFilePrefix, partyIndex, keyFileSuffix))
-	file, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal EdDSA key data: %w", err)
+	if len(keys) == 0 {
+		return nil, fmt.Errorf("no ECDSA keys found for keyID: %s", keyID)
 	}
-	return ioutil.WriteFile(fileName, file, 0644)
+	return keys, nil
 }
 
-// LoadEdDSAKey loads the EdDSA LocalPartySaveData for a given party index from a JSON file.
-func LoadEdDSAKey(keyID string, partyIndex int) (*eddsaKeygen.LocalPartySaveData, error) {
-	fileName := filepath.Join(keysDir, fmt.Sprintf("%s_%s%d%s", keyID, eddsaKeyFilePrefix, partyIndex, keyFileSuffix))
-	file, err := ioutil.ReadFile(fileName)
+func LoadAllEdDSAKeys(keyID string) ([]eddsaKeygen.LocalPartySaveData, error) {
+	var keys []eddsaKeygen.LocalPartySaveData
+	i := 0
+	for {
+		fileName := fmt.Sprintf("%s_eddsa_key_party_%d.json", keyID, i)
+		filePath := filepath.Join(keyFolder, fileName)
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			break // No more files for this keyID
+		}
+
+		file, err := os.ReadFile(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read key file %s: %w", filePath, err)
+		}
+
+		var keyData eddsaKeygen.LocalPartySaveData
+		if err := json.Unmarshal(file, &keyData); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal key data from %s: %w", filePath, err)
+		}
+		keys = append(keys, keyData)
+		i++
+	}
+	if len(keys) == 0 {
+		return nil, fmt.Errorf("no EdDSA keys found for keyID: %s", keyID)
+	}
+	return keys, nil
+}
+
+func saveKey(fileName string, keyData interface{}) error {
+	if err := os.MkdirAll(keyFolder, 0700); err != nil {
+		return fmt.Errorf("failed to create key folder: %w", err)
+	}
+
+	filePath := filepath.Join(keyFolder, fileName)
+	file, err := json.MarshalIndent(keyData, "", "  ")
 	if err != nil {
-		return nil, fmt.Errorf("failed to read EdDSA key file: %w", err)
+		return fmt.Errorf("failed to marshal key data: %w", err)
 	}
-	var data eddsaKeygen.LocalPartySaveData
-	if err := json.Unmarshal(file, &data); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal EdDSA key data: %w", err)
-	}
-	return &data, nil
+
+	return os.WriteFile(filePath, file, 0600)
 }
