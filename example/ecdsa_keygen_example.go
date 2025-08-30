@@ -112,4 +112,13 @@ func RunECDSAKeygenExample() {
 		fmt.Printf("Party %d private share: %s\n", i, saveData.Xi.String())
 	}
 	fmt.Println("--- Finished ECDSA Key Generation Example ---\n")
+
+	// Save the generated keys
+	for i, saveData := range saveDatas {
+		if err := SaveECDSAKey(i, saveData); err != nil {
+			fmt.Printf("Error saving ECDSA key for party %d: %v\n", i, err)
+			os.Exit(1)
+		}
+		fmt.Printf("ECDSA key for party %d saved to %s/%s%d%s\n", i, keysDir, ecdsaKeyFilePrefix, i, keyFileSuffix)
+	}
 }
