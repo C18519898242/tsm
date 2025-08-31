@@ -5,7 +5,7 @@ go 1.24.5
 require github.com/bnb-chain/tss-lib/v2 v2.0.0 // Or a specific version if needed
 
 require (
-	github.com/agl/ed25519 v0.0.0-20200225211852-fd4d107ace12 // indirect
+	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
 	github.com/btcsuite/btcd v0.23.4 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 // indirect
@@ -29,5 +29,3 @@ require (
 )
 
 replace github.com/bnb-chain/tss-lib/v2 => ../tss-lib
-
-replace github.com/agl/ed25519 => github.com/binance-chain/edwards25519 v0.0.0-20200305024217-f36fc4b53d43

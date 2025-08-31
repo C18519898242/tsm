@@ -3,12 +3,27 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"math/big"
 	"os"
 	"strings"
 	"tsm/internal/tss"
+
+	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/bnb-chain/tss-lib/v2/crypto"
+	"github.com/decred/dcrd/dcrec/edwards/v2"
 )
 
+// ecPointToEncodedBytes converts an EC point to the 32-byte compressed format.
+func ecPointToEncodedBytes(x *big.Int, y *big.Int) *[32]byte {
+	pk := edwards.NewPublicKey(x, y)
+	serialized := pk.Serialize()
+	var s [32]byte
+	copy(s[:], serialized)
+	return &s
+}
+
 func main() {
+	fmt.Println("Application starting...")
 	for {
 		fmt.Println("\nSelect an operation:")
 		fmt.Println("1. Generate new keys")
@@ -106,32 +121,47 @@ func handleSignMessage() {
 
 	// 4. Call signing function
 	fmt.Printf("\nSigning message with KeyID '%s'...\n", keyID)
-	var sigBytes []byte
-	var errSign error
 
-	switch algChoice {
-	case 1:
-		signature, err := tss.SignECDSA(keyID, message)
-		if err != nil {
-			errSign = err
-		} else if signature != nil {
-			sigBytes = signature.GetSignature()
-		}
-	case 2:
-		signature, err := tss.SignEdDSA(keyID, message)
-		if err != nil {
-			errSign = err
-		} else if signature != nil {
-			sigBytes = signature.GetSignature()
-		}
+	var signature *common.SignatureData
+	var pubKey *crypto.ECPoint
+
+	if algChoice == 1 {
+		signature, err = tss.SignECDSA(keyID, message)
+	} else {
+		signature, pubKey, err = tss.SignEdDSA(keyID, message)
 	}
 
-	if errSign != nil {
-		fmt.Printf("Error signing message: %v\n", errSign)
-	} else if sigBytes != nil {
-		fmt.Printf("Signature generated successfully!\n")
-		fmt.Printf("Signature (hex): %x\n", sigBytes)
-	} else {
+	if err != nil {
+		fmt.Printf("Error signing message: %v\n", err)
+		return
+	}
+	if signature == nil {
 		fmt.Println("Failed to generate signature, but no error was reported.")
+		return
+	}
+
+	fmt.Printf("Signature generated successfully!\n")
+	fmt.Printf("Signature (hex): %x\n", signature.GetSignature())
+
+	// Verification
+	if algChoice == 1 {
+		fmt.Println("ECDSA signing does not have verification implemented in this CLI.")
+	} else if algChoice == 2 {
+		pkBytes := ecPointToEncodedBytes(pubKey.X(), pubKey.Y())
+		parsedPk, err := edwards.ParsePubKey((*pkBytes)[:])
+		if err != nil {
+			fmt.Println("Error parsing public key for verification:", err)
+			return
+		}
+
+		r := new(big.Int).SetBytes(signature.GetR())
+		s := new(big.Int).SetBytes(signature.GetS())
+
+		ok := edwards.Verify(parsedPk, []byte(message), r, s)
+		if ok {
+			fmt.Println("✅ Signature Verified Successfully!")
+		} else {
+			fmt.Println("❌ Signature Verification Failed!")
+		}
 	}
 }

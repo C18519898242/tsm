@@ -8,6 +8,7 @@ import (
 	"tsm/internal/keystore"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/bnb-chain/tss-lib/v2/crypto"
 	ecdsaKeygen "github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	ecdsaSigning "github.com/bnb-chain/tss-lib/v2/ecdsa/signing"
 	eddsaKeygen "github.com/bnb-chain/tss-lib/v2/eddsa/keygen"
@@ -75,17 +76,18 @@ func SignECDSA(keyID string, message string) (*common.SignatureData, error) {
 }
 
 // SignEdDSA performs a threshold signature for EdDSA.
-func SignEdDSA(keyID string, message string) (*common.SignatureData, error) {
+func SignEdDSA(keyID string, message string) (*common.SignatureData, *crypto.ECPoint, error) {
 	fmt.Println("Loading EdDSA keys...")
 	keys, err := keystore.LoadAllEdDSAKeys(keyID)
 	if err != nil {
-		return nil, fmt.Errorf("error loading EdDSA keys: %w", err)
+		return nil, nil, fmt.Errorf("error loading EdDSA keys: %w", err)
 	}
 
 	partyNum := len(keys)
 	if partyNum < 2 {
-		return nil, fmt.Errorf("not enough keys to perform signing")
+		return nil, nil, fmt.Errorf("not enough keys to perform signing")
 	}
+	pubKey := keys[0].EDDSAPub
 	threshold := testThreshold
 
 	// 1. Create and prepare the signing parties
@@ -127,9 +129,9 @@ func SignEdDSA(keyID string, message string) (*common.SignatureData, error) {
 	select {
 	case sig := <-endCh:
 		fmt.Println("EdDSA Signature generated!")
-		return sig, nil
+		return sig, pubKey, nil
 	case err := <-errCh:
-		return nil, fmt.Errorf("signing error: %w", err)
+		return nil, nil, fmt.Errorf("signing error: %w", err)
 	}
 }
 
